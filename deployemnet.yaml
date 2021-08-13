@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gvc
+  namespace: grras
+spec:
+  type: NodePort
+  selector:
+    app: wordpress
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30000
+ ---
+ 
+apiVersion: v1
+kind: Service
+metadata:
+  name: database-svc
+spec:
+  selector:
+    app: db1
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3306      
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-pass
+  namespace: grras
+type: Opaque
+data:
+  password: cmVkaGF0Cg==
+  
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress
+  labels:
+    app: wordpress
+  namespace: grras
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: wordpress
+  template:
+    metadata:
+      labels:
+        app: wordpress
+    spec:
+      volume:
+	     - name: dbvol1
+         hostPath:
+            path: "/data"
+            type: Directory
+      containers:
+      - image: wordpress:4.8-apache
+        name: wordpress
+        volumeMounts:
+           - name: dbvol1
+             mountPath: /var/www/html/
+        env:
+        - name: WORDPRESS_DB_HOST
+          value: wordpress-mysql
+        - name: WORDPRESS_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-pass
+              key: password
+        ports:
+        - containerPort: 80
+        
+ ---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: database
+  labels:
+    app: db1
+  namespace: grras
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: db1
+  template:
+    metadata:
+      labels:
+        app: db1
+    spec:
+      volume:
+	     - name: dbvol2
+         hostPath:
+            path: "/database"
+            type: Directory
+      containers:
+      - image: mysql:5.6
+        name: mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-pass
+              key: password
+        ports:
+        - containerPort: 3306  
+        
+ 
