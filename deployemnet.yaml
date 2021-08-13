@@ -37,7 +37,7 @@ spec:
             path: "/data"
             type: Directory
       containers:
-      - image: nginx
+      - image: nginx:1.14.2
         name: nginx
         volumeMounts:
            - name: dbvol1
